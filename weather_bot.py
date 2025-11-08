@@ -9,41 +9,39 @@ CHAT_ID = os.environ.get("CHAT_ID")
 if not all([OWM_API_KEY, TELEGRAM_TOKEN, CHAT_ID]):
     raise ValueError("Please set OWM_API_KEY, TELEGRAM_TOKEN, and CHAT_ID as environment variables.")
 
-# Cities to check
+# Cities with coordinates
 cities = {
-    "San Antonio": {"name": "San Antonio", "country": "US"},
-    "Cypress": {"name": "Cypress", "country": "US"}
+    "San Antonio": {"lat": 29.4241, "lon": -98.4936},
+    "Cypress": {"lat": 29.9699, "lon": -95.6639}
 }
 
 def get_weather(city_info):
-    city_name = f"{city_info['name']},{city_info['country']}"
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city_name}&appid={OWM_API_KEY}&units=metric"
+    url = (
+        f"http://api.openweathermap.org/data/2.5/weather"
+        f"?lat={city_info['lat']}&lon={city_info['lon']}&appid={OWM_API_KEY}&units=metric"
+    )
     response = requests.get(url).json()
+
+    # Debugging: uncomment to see full API response
+    # print(response)
 
     # Handle API errors
     if response.get("cod") != 200:
         return "Weather data unavailable."
 
-    weather_main = response['weather'][0]['main']
     weather_desc = response['weather'][0]['description'].capitalize()
     temp = round(response['main']['temp'])
     rain = response.get('rain', {}).get('1h', 0)
-
-    # Determine rain message
     rain_text = "with no rain expected" if rain == 0 else f"with {rain} mm rain expected"
 
-    # Custom fog message for Cypress if weather is clear and early fog is likely
-    fog_text = ""
-    if city_info['name'] == "Cypress" and weather_main.lower() in ["clear", "sunny"]:
+    # Special fog message for Cypress
+    if city_info['lat'] == 29.9699:  # Cypress
         fog_text = " (though some earlier fog expected)"
-
-    # Format dynamic message
-    if city_info['name'] == "Cypress":
         return f"{weather_desc}{fog_text}, reaching around {temp} °C, and also {rain_text}."
     else:
         return f"{weather_desc}, rising to about {temp} °C, {rain_text}."
 
-# Build message
+# Build dynamic message
 message = ""
 for city, info in cities.items():
     message += f"In {city}: {get_weather(info)}\n"
