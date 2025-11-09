@@ -1,26 +1,32 @@
 name: Gemini Weather to Telegram
 
 on:
+  # Schedule to run daily at 6:40 AM CST (12:40 UTC)
   schedule:
-    - cron: '40 12 * * *'  # 6:40 AM CST = 12:40 UTC
-  workflow_dispatch:  # allows manual runs
+    - cron: '40 12 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
-  run-gemini:
+  send-weather:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 2: Set up Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
+      # Step 3: Install dependencies
+      - name: Install Python dependencies
         run: pip install google-generativeai requests
 
+      # Step 4: Run Gemini weather script
       - name: Run Gemini Weather Prompt and Send to Telegram
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
