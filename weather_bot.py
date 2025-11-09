@@ -1,56 +1,32 @@
 import os
 import requests
+import google.generativeai as genai
 
-# Read API keys and chat ID from environment variables (GitHub Actions secrets)
-OWM_API_KEY = os.environ.get("OWM_API_KEY")
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-CHAT_ID = os.environ.get("CHAT_ID")
+# 🔑 Load secrets from environment
+GEMINI_API_KEY = os.environ["GOOGLE_API_KEY"]
+TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
-if not all([OWM_API_KEY, TELEGRAM_TOKEN, CHAT_ID]):
-    raise ValueError("Please set OWM_API_KEY, TELEGRAM_TOKEN, and CHAT_ID as environment variables.")
+# ⚙️ Configure Gemini
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-# Cities with coordinates
-cities = {
-    "San Antonio": {"lat": 29.4241, "lon": -98.4936},
-    "Cypress": {"lat": 29.9699, "lon": -95.6639}
-}
+# 💬 Prompt Gemini
+prompt = """
+Check the weather in San Antonio and Cypress, Texas,
+and give me a short two-sentence summary like this:
 
-def get_weather(city_info):
-    url = (
-        f"http://api.openweathermap.org/data/2.5/weather"
-        f"?lat={city_info['lat']}&lon={city_info['lon']}&appid={OWM_API_KEY}&units=metric"
-    )
-    response = requests.get(url).json()
+In San Antonio: [weather description and temperature].
+In Cypress: [weather description and temperature].
+"""
 
-    # Debugging: uncomment to see full API response
-    # print(response)
+# 🧠 Generate response
+response = model.generate_content(prompt)
+message = response.text.strip()
 
-    # Handle API errors
-    if response.get("cod") != 200:
-        return "Weather data unavailable."
+# 📤 Send to Telegram
+telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+data = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
+requests.post(telegram_url, data=data)
 
-    weather_desc = response['weather'][0]['description'].capitalize()
-    temp = round(response['main']['temp'])
-    rain = response.get('rain', {}).get('1h', 0)
-    rain_text = "with no rain expected" if rain == 0 else f"with {rain} mm rain expected"
-
-    # Special fog message for Cypress
-    if city_info['lat'] == 29.9699:  # Cypress
-        fog_text = " (though some earlier fog expected)"
-        return f"{weather_desc}{fog_text}, reaching around {temp} °C, and also {rain_text}."
-    else:
-        return f"{weather_desc}, rising to about {temp} °C, {rain_text}."
-
-# Build dynamic message
-message = ""
-for city, info in cities.items():
-    message += f"In {city}: {get_weather(info)}\n"
-
-# Send message to Telegram
-telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-response = requests.get(telegram_url, params={"chat_id": CHAT_ID, "text": message})
-
-if response.status_code == 200:
-    print("Weather message sent successfully!")
-else:
-    print(f"Failed to send message: {response.text}")
+print("✅ Message sent to Telegram!")
