@@ -2,8 +2,8 @@ name: Gemini Weather to Telegram
 
 on:
   schedule:
-    - cron: '40 12 * * *'  # 6:40 AM CST (12:40 UTC)
-  workflow_dispatch:
+    - cron: '40 12 * * *'  # 6:40 AM CST = 12:40 UTC
+  workflow_dispatch:  # allows manual runs
 
 jobs:
   run-gemini:
